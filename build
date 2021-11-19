@@ -1,0 +1,43 @@
+#!/bin/bash -e
+
+VERSION=$1
+DEPLOY=$2
+
+function printHelp {
+    echo "Usage: ./build VERSION DEPLOY"
+}
+
+if [ -z ${VERSION} ]; then
+    echo "VERSION missing"
+    printHelp
+    exit 1
+fi
+
+if [ -z ${DEPLOY} ]; then
+    echo "DEPLOY missing pass 'no' to skip deploying"
+    printHelp
+    exit 2
+fi
+
+set -x
+if [ -d files ]; then
+    rm -rf files
+fi
+mkdir files
+wget https://github.com/cli/cli/releases/download/v${VERSION}/gh_${VERSION}_linux_amd64.tar.gz -O files/gh_${VERSION}_linux_amd64.tar.gz
+cd files
+tar -xvf gh_${VERSION}_linux_amd64.tar.gz
+cd ../
+
+cp files/gh_${VERSION}_linux_amd64/bin/gh files/gh
+
+docker build --force-rm --rm -t "mdoq/gh:${VERSION}" .
+docker tag "mdoq/gh:${VERSION}" "mdoq/gh:latest"
+
+rm -rf files
+
+if [ ${DEPLOY} = "DEPLOY" ]; then
+    docker push mdoq/gh
+else
+    echo "not deploying, pass DEPLOY in to deploy"
+fi
